@@ -47,17 +47,21 @@ export async function approve(
       repo: context.repo.repo,
       pull_number: prNumber,
     });
-
+    
     for (const review of reviews.data) {
       if (
         review.user?.login == login &&
         review.commit_id == commit &&
-        review.state == "APPROVED"
+        review.state == "APPROVED" &&
+        pull_request.data
+        .requested_reviewers?.filter(
+          reviewer => reviewer.login == login
+        ).length == 0
       ) {
-        core.info(
-          `Current user already approved pull request #${prNumber}, nothing to do`
-        );
-        return;
+          core.info(
+            `Current user already approved pull request #${prNumber}, nothing to do`
+          );
+          return;
       }
     }
 

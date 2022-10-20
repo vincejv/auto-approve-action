@@ -113,7 +113,13 @@ test("when a review has already been approved by current user", async () => {
 
   nock("https://api.github.com")
     .get("/repos/hmarr/test/pulls/101")
-    .reply(200, { head: { sha: "24c5451bbf1fb09caa3ac8024df4788aff4d4974" } });
+    .reply(200, 
+      { 
+        head: { sha: "24c5451bbf1fb09caa3ac8024df4788aff4d4974" },
+        requested_reviewers: [
+          { login: "some" }
+        ]
+      });
 
   nock("https://api.github.com")
     .get("/repos/hmarr/test/pulls/101/reviews")
@@ -121,7 +127,7 @@ test("when a review has already been approved by current user", async () => {
       {
         user: { login: "hmarr" },
         commit_id: "24c5451bbf1fb09caa3ac8024df4788aff4d4974",
-        state: "APPROVED",
+        state: "APPROVED"
       },
     ]);
 
@@ -131,6 +137,39 @@ test("when a review has already been approved by current user", async () => {
     expect.stringContaining(
       "Current user already approved pull request #101, nothing to do"
     )
+  );
+});
+
+test("when a review has been previously approved by user and but requests a re-review", async () => {
+  nock("https://api.github.com").get("/user").reply(200, { login: "hmarr" });
+
+  nock("https://api.github.com")
+    .get("/repos/hmarr/test/pulls/101")
+    .reply(200, { 
+      head: { sha: "24c5451bbf1fb09caa3ac8024df4788aff4d4974" },
+      requested_reviewers: [
+        { login: "hmarr" }
+      ]
+    });
+
+  nock("https://api.github.com")
+    .get("/repos/hmarr/test/pulls/101/reviews")
+    .reply(200, [
+      {
+        user: null,
+        commit_id: "24c5451bbf1fb09caa3ac8024df4788aff4d4974",
+        state: "APPROVED",
+      },
+    ]);
+
+  nock("https://api.github.com")
+    .post("/repos/hmarr/test/pulls/101/reviews")
+    .reply(200, { id: 1 });
+
+  await approve("gh-tok", new Context(), 101);
+
+  expect(core.info).toHaveBeenCalledWith(
+    expect.stringContaining("Approved pull request #101")
   );
 });
 
